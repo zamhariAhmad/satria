@@ -1,20 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { ArrowLeft, Bookmark, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { useQuranStore } from "@/features/quran/store/quran-store";
 import { formatDateTime } from "@/lib/format";
 import { toast } from "sonner";
+import { useIsMounted } from "@/lib/use-is-mounted";
 
 export default function QuranBookmarksPage() {
+  const mounted = useIsMounted();
   const bookmarks = useQuranStore((s) => s.bookmarks);
   const removeBookmark = useQuranStore((s) => s.removeBookmark);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => setHydrated(true), []);
 
   return (
     <div className="space-y-4">
@@ -31,7 +29,7 @@ export default function QuranBookmarksPage() {
         description="Ayat yang kamu simpan untuk dibaca kembali."
       />
 
-      {!hydrated ? null : bookmarks.length === 0 ? (
+      {!mounted ? null : bookmarks.length === 0 ? (
         <EmptyState
           icon={Bookmark}
           title="Belum ada bookmark"

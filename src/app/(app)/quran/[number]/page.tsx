@@ -18,10 +18,12 @@ import { AudioPlayer } from "@/features/quran/components/AudioPlayer";
 import { useQuranStore } from "@/features/quran/store/quran-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/cn";
+import { useIsMounted } from "@/lib/use-is-mounted";
 
 type Params = Promise<{ number: string }>;
 
 export default function SurahPage({ params }: { params: Params }) {
+  const mounted = useIsMounted();
   const { number: numStr } = use(params);
   const number = Number(numStr);
   const { data, isLoading, isError, refetch } = useSurah(number);
@@ -86,7 +88,7 @@ export default function SurahPage({ params }: { params: Params }) {
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [data]);
 
-  if (isLoading) return <LoadingScreen />;
+  if (!mounted || isLoading) return <LoadingScreen />;
   if (isError || !data)
     return (
       <ErrorScreen

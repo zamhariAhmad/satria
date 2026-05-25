@@ -44,6 +44,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             const key = q.queryKey?.[0];
             if (typeof key !== "string") return q.state.status === "success";
             // Avoid persisting volatile or large data.
+            // "doa" is intentionally included so wirid pages load from cache.
             if (key === "geocode" || key === "spiritual") return false;
             return q.state.status === "success";
           },

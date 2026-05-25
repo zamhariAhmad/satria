@@ -13,15 +13,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { LoadingScreen } from "@/components/common/LoadingScreen";
 import { ErrorScreen } from "@/components/common/ErrorScreen";
-import {
-  useHaditsDetail,
-  useKitabHadits,
-} from "@/features/hadits/api/use-hadits";
+import { useHaditsDetail, useKitabHadits } from "@/features/hadits/api/use-hadits";
 import { prettifyKitabSlug, cleanHaditsText } from "@/features/hadits/lib/format";
+import { useIsMounted } from "@/lib/use-is-mounted";
 
 type Params = Promise<{ slug: string; nomor: string }>;
 
 export default function HaditsDetailPage({ params }: { params: Params }) {
+  const mounted = useIsMounted();
   const { slug, nomor: nomorStr } = use(params);
   const nomor = Number(nomorStr);
 
@@ -34,7 +33,7 @@ export default function HaditsDetailPage({ params }: { params: Params }) {
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [slug, nomor]);
 
-  if (isLoading) return <LoadingScreen />;
+  if (!mounted || isLoading) return <LoadingScreen />;
   if (isError || !data)
     return (
       <ErrorScreen

@@ -10,8 +10,10 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Input } from "@/components/ui/input";
 import { useSurahs } from "@/features/quran/api/use-quran";
 import { LastReadCard } from "@/features/quran/components/LastReadCard";
+import { useIsMounted } from "@/lib/use-is-mounted";
 
 export default function QuranPage() {
+  const mounted = useIsMounted();
   const { data, isLoading, isError, refetch } = useSurahs();
   const [q, setQ] = useState("");
 
@@ -58,7 +60,7 @@ export default function QuranPage() {
         />
       </div>
 
-      {isLoading ? (
+      {!mounted || isLoading ? (
         <LoadingScreen />
       ) : isError ? (
         <ErrorScreen onRetry={() => refetch()} />

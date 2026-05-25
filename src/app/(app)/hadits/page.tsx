@@ -21,8 +21,10 @@ import {
   useKitabList,
 } from "@/features/hadits/api/use-hadits";
 import { prettifyKitabSlug, cleanHaditsText } from "@/features/hadits/lib/format";
+import { useIsMounted } from "@/lib/use-is-mounted";
 
 export default function HaditsPage() {
+  const mounted = useIsMounted();
   const { data, isLoading, isError, refetch } = useKitabList();
   const daily = useDailyHadits();
   const [q, setQ] = useState("");
@@ -57,7 +59,7 @@ export default function HaditsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0">
-          {daily.isLoading ? (
+          {!mounted || daily.isLoading ? (
             <p className="text-xs text-primary-foreground/80">Memuat…</p>
           ) : daily.isError || !daily.data ? (
             <p className="text-xs text-primary-foreground/80">
@@ -108,7 +110,7 @@ export default function HaditsPage() {
       </div>
 
       {/* Kitab list */}
-      {isLoading ? (
+      {!mounted || isLoading ? (
         <LoadingScreen />
       ) : isError ? (
         <ErrorScreen onRetry={() => refetch()} />

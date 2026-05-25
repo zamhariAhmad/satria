@@ -22,12 +22,14 @@ import {
 } from "@/features/hadits/api/use-hadits";
 import type { Hadits } from "@/features/hadits/schemas/hadits";
 import { prettifyKitabSlug, cleanHaditsText } from "@/features/hadits/lib/format";
+import { useIsMounted } from "@/lib/use-is-mounted";
 
 const PAGE_SIZE = 10;
 
 type Params = Promise<{ slug: string }>;
 
 export default function HaditsKitabPage({ params }: { params: Params }) {
+  const mounted = useIsMounted();
   const { slug } = use(params);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
@@ -76,9 +78,9 @@ export default function HaditsKitabPage({ params }: { params: Params }) {
       </Link>
 
       <PageHeader
-        title={list.data?.nama ?? prettifyKitabSlug(slug)}
+        title={mounted ? (list.data?.nama ?? prettifyKitabSlug(slug)) : prettifyKitabSlug(slug)}
         description={
-          list.data
+          mounted && list.data
             ? `${list.data.total.toLocaleString("id-ID")} hadits dalam kitab ini.`
             : "Memuat informasi kitab..."
         }
@@ -121,7 +123,7 @@ export default function HaditsKitabPage({ params }: { params: Params }) {
       {isSearching ? (
         <SearchResults
           slug={slug}
-          isLoading={search.isLoading}
+          isLoading={!mounted || search.isLoading}
           isError={search.isError}
           onRetry={() => search.refetch()}
           items={search.data?.results ?? []}
@@ -133,7 +135,7 @@ export default function HaditsKitabPage({ params }: { params: Params }) {
       ) : (
         <BrowseList
           slug={slug}
-          isLoading={list.isLoading}
+          isLoading={!mounted || list.isLoading}
           isError={list.isError}
           onRetry={() => list.refetch()}
           items={list.data?.hadiths ?? []}

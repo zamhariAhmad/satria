@@ -25,7 +25,7 @@ const ACTIONS: QuickAction[] = [
   { label: "Kiblat", icon: Compass, tone: "sky" },
   { label: "Hadits", icon: BookOpenText, tone: "indigo", href: "/hadits" },
   { label: "Tahlil & Yasin", icon: ScrollText, tone: "rose" },
-  { label: "Wirid & Doa", icon: HandHeart, tone: "violet" },
+  { label: "Wirid & Doa", icon: HandHeart, tone: "violet", href: "/wirid" },
 ];
 
 const TONE_BG: Record<QuickAction["tone"], string> = {
