@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Inter, Amiri_Quran } from "next/font/google";
 import { brand } from "@/config/brand";
+import { env } from "@/config/env";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { MockProvider } from "@/providers/MockProvider";
 import { PwaRegister } from "@/providers/PwaRegister";
@@ -21,6 +22,7 @@ const amiriQuran = Amiri_Quran({
 });
 
 export const metadata = {
+  metadataBase: new URL(env.appUrl),
   title: `${brand.name} — ${brand.tagline}`,
   description: brand.description,
   applicationName: brand.name,

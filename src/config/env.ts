@@ -1,5 +1,6 @@
 export const env = {
   appName: process.env.NEXT_PUBLIC_APP_NAME ?? "Satria",
+  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://satria.searah.my.id",
   apiBaseUrl:
     process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api/v1",
   useMock: (process.env.NEXT_PUBLIC_USE_MOCK ?? "true") === "true",

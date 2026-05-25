@@ -1,15 +1,19 @@
 {
+  "id": "https://satria.searah.my.id/",
   "name": "Satria — Pesantren Payments",
   "short_name": "Satria",
   "description": "Monitoring pembayaran santri yang transparan dan mudah.",
   "start_url": "/home",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#16a34a",
   "lang": "id",
+  "dir": "ltr",
   "categories": ["finance", "education", "lifestyle"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/icon-192.png",
