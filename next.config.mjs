@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Only apply static export for production builds; dev mode needs the full
+  // Next.js server so dynamic routes work without enumerating all params.
+  ...(process.env.NODE_ENV === "production" ? { output: "export", distDir: "out" } : {}),
   reactStrictMode: true,
   images: {
     remotePatterns: [

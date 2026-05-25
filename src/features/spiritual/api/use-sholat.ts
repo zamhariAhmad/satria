@@ -9,24 +9,29 @@ import {
   type SholatJadwalToday,
 } from "@/features/spiritual/schemas/sholat";
 
-type Envelope<T> = {
-  data: T | null;
-  error: { code: string; message: string } | null;
+const SHOLAT_BASE = "https://api.myquran.com/v3/sholat";
+
+type MyQuranResponse = {
+  status?: boolean | string;
+  data?: unknown;
+  message?: string;
 };
 
-async function parseEnvelope<T>(
+async function parseSholatResponse<T>(
   res: Response,
   schema: z.ZodType<T, z.ZodTypeDef, unknown>,
 ): Promise<T> {
-  const text = await res.text();
-  let json: Envelope<unknown>;
-  try {
-    json = text ? (JSON.parse(text) as Envelope<unknown>) : { data: null, error: null };
-  } catch {
-    throw new Error(`Invalid JSON from sholat proxy (${res.status})`);
+  if (!res.ok) {
+    throw new Error(`Sholat API error: ${res.status}`);
   }
-  if (!res.ok || json.error || json.data == null) {
-    throw new Error(json.error?.message ?? `Sholat proxy error: ${res.status}`);
+  let json: MyQuranResponse;
+  try {
+    json = (await res.json()) as MyQuranResponse;
+  } catch {
+    throw new Error(`Sholat API returned non-JSON (${res.status})`);
+  }
+  if (!json?.status || json.data == null) {
+    throw new Error(json?.message ?? `Sholat API: data tidak tersedia`);
   }
   const parsed = schema.safeParse(json.data);
   if (!parsed.success) {
@@ -46,12 +51,10 @@ export function useSearchKabkota(keyword: string | undefined) {
     queryKey: sholatKeys.search(trimmed.toLowerCase()),
     enabled: trimmed.length >= 2,
     queryFn: async () => {
-      const res = await fetch("/api/sholat/kabkota/cari", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: trimmed }),
+      const res = await fetch(`${SHOLAT_BASE}/kabkota/cari/${encodeURIComponent(trimmed)}`, {
+        headers: { Accept: "application/json" },
       });
-      return parseEnvelope<KabkotaItem[]>(res, kabkotaListSchema);
+      return parseSholatResponse<KabkotaItem[]>(res, kabkotaListSchema);
     },
     staleTime: 1000 * 60 * 60 * 24,
   });
@@ -62,8 +65,10 @@ export function useJadwalToday(id: string | null | undefined) {
     queryKey: sholatKeys.jadwalToday(id ?? ""),
     enabled: !!id,
     queryFn: async () => {
-      const res = await fetch(`/api/sholat/jadwal/${id}/today`);
-      return parseEnvelope<SholatJadwalToday>(res, sholatJadwalTodaySchema);
+      const res = await fetch(`${SHOLAT_BASE}/jadwal/${id}/today`, {
+        headers: { Accept: "application/json" },
+      });
+      return parseSholatResponse<SholatJadwalToday>(res, sholatJadwalTodaySchema);
     },
     staleTime: 1000 * 60 * 60,
   });

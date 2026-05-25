@@ -13,27 +13,41 @@ import {
   type KitabList,
 } from "@/features/hadits/schemas/hadits";
 
-type Envelope<T> = {
-  data: T | null;
-  error: { code: string; message: string } | null;
+const SANUSI_BASE =
+  process.env.NEXT_PUBLIC_AHMAD_SANUSI_API_URL ?? "https://api.ahmadsanusi.com/v1";
+const SANUSI_API_KEY = process.env.NEXT_PUBLIC_AHMAD_SANUSI_API_KEY ?? "";
+
+type SanusiResponse = {
+  status?: string;
+  data?: unknown;
+  message?: string;
 };
 
 async function fetchHadits<T>(
   path: string,
   schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  init: RequestInit = {},
 ): Promise<T> {
-  const res = await fetch(path, { headers: { Accept: "application/json" } });
-  const text = await res.text();
-  let json: Envelope<unknown>;
-  try {
-    json = text
-      ? (JSON.parse(text) as Envelope<unknown>)
-      : { data: null, error: null };
-  } catch {
-    throw new Error(`Hadits proxy returned non-JSON (${res.status})`);
+  const url = `${SANUSI_BASE.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+  const res = await fetch(url, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(SANUSI_API_KEY ? { "X-API-Key": SANUSI_API_KEY } : {}),
+      ...(init.headers ?? {}),
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`Hadits API error: ${res.status}`);
   }
-  if (!res.ok || json.error || json.data == null) {
-    throw new Error(json.error?.message ?? `Hadits proxy error: ${res.status}`);
+  let json: SanusiResponse;
+  try {
+    json = (await res.json()) as SanusiResponse;
+  } catch {
+    throw new Error(`Hadits API returned non-JSON (${res.status})`);
+  }
+  if (!json?.status || json.data == null) {
+    throw new Error(json?.message ?? `Hadits API: data tidak tersedia`);
   }
   const parsed = schema.safeParse(json.data);
   if (!parsed.success) {
@@ -56,7 +70,7 @@ export const haditsKeys = {
 export function useKitabList() {
   return useQuery({
     queryKey: haditsKeys.kitab,
-    queryFn: () => fetchHadits<KitabList>("/api/hadits", kitabListSchema),
+    queryFn: () => fetchHadits<KitabList>("hadits", kitabListSchema),
     staleTime: 1000 * 60 * 60 * 24,
   });
 }
@@ -64,7 +78,7 @@ export function useKitabList() {
 export function useDailyHadits() {
   return useQuery({
     queryKey: haditsKeys.daily,
-    queryFn: () => fetchHadits<Hadits>("/api/hadits/daily", haditsSchema),
+    queryFn: () => fetchHadits<Hadits>("hadits/daily", haditsSchema),
     staleTime: 1000 * 60 * 60 * 6,
   });
 }
@@ -84,7 +98,7 @@ export function useKitabHadits({
     queryKey: haditsKeys.byKitab(slug ?? "", page, limit),
     enabled: !!slug,
     queryFn: () => {
-      const url = `/api/hadits/${slug}?page=${page}&limit=${limit}`;
+      const url = `hadits/${slug}?page=${page}&limit=${limit}`;
       return fetchHadits<HaditsByKitab>(url, haditsByKitabSchema);
     },
     staleTime: 1000 * 60 * 30,
@@ -116,8 +130,8 @@ export function useSearchHadits({
       if (kitab) search.set("kitab", kitab);
       search.set("page", String(page));
       search.set("limit", String(limit));
-      const url = `/api/hadits/search?${search.toString()}`;
-      return fetchHadits<HaditsSearch>(url, haditsSearchSchema);
+      const url = `hadits/search?${search.toString()}`;
+      return fetchHadits<HaditsSearch>(url, haditsSearchSchema, { cache: "no-store" });
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -128,7 +142,7 @@ export function useHaditsDetail(slug: string | null, nomor: number | null) {
     queryKey: haditsKeys.detail(slug ?? "", nomor ?? 0),
     enabled: !!slug && !!nomor,
     queryFn: () =>
-      fetchHadits<Hadits>(`/api/hadits/${slug}/${nomor}`, haditsSchema),
+      fetchHadits<Hadits>(`hadits/${slug}/${nomor}`, haditsSchema),
     staleTime: 1000 * 60 * 60 * 24,
   });
 }
