@@ -23,10 +23,24 @@ export const ayahSchema = z.object({
 });
 export type Ayah = z.infer<typeof ayahSchema>;
 
+export const surahPaginationSchema = z.object({
+  page: z.number(),
+  limit: z.number(),
+  total: z.number(),
+});
+export type SurahPagination = z.infer<typeof surahPaginationSchema>;
+
 export const surahDetailSchema = surahListItemSchema.extend({
   ayahs: z.array(ayahSchema),
+  pagination: surahPaginationSchema.optional(),
 });
 export type SurahDetail = z.infer<typeof surahDetailSchema>;
+
+// Envelope schema used when pagination is at the top level of the response.
+export const surahDetailEnvelopeSchema = z.object({
+  data: surahListItemSchema.extend({ ayahs: z.array(ayahSchema) }),
+  pagination: surahPaginationSchema.optional(),
+});
 
 export const tafsirEntrySchema = z
   .union([

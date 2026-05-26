@@ -83,8 +83,8 @@ export function useReverseGeocode(
   return useQuery({
     queryKey: [
       "geocode",
-      coords ? Math.round(coords.latitude * 1000) / 1000 : null,
-      coords ? Math.round(coords.longitude * 1000) / 1000 : null,
+      coords ? Math.round(coords.latitude * 100) / 100 : null,
+      coords ? Math.round(coords.longitude * 100) / 100 : null,
     ],
     enabled: !!coords,
     queryFn: () => reverseGeocode(coords!.latitude, coords!.longitude),

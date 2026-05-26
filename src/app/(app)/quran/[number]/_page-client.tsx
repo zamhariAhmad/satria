@@ -2,18 +2,21 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Bookmark,
   BookmarkCheck,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   Info,
 } from "lucide-react";
 import { LoadingScreen } from "@/components/common/LoadingScreen";
 import { ErrorScreen } from "@/components/common/ErrorScreen";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useSurah } from "@/features/quran/api/use-quran";
 import { AudioPlayer } from "@/features/quran/components/AudioPlayer";
 import { useQuranStore } from "@/features/quran/store/quran-store";
@@ -25,13 +28,27 @@ export default function SurahPage() {
   const mounted = useIsMounted();
   const { number: numStr } = useParams<{ number: string }>();
   const number = Number(numStr);
-  const { data, isLoading, isError, refetch } = useSurah(number);
+  const [ayahPage, setAyahPage] = useState(1);
+  const [showTranslation, setShowTranslation] = useState(true);
+
+  const { data, isLoading, isError, refetch } = useSurah(number, ayahPage);
 
   const setLastRead = useQuranStore((s) => s.setLastRead);
   const toggleBookmark = useQuranStore((s) => s.toggleBookmark);
   const bookmarks = useQuranStore((s) => s.bookmarks);
 
   const observedRef = useRef<HTMLUListElement | null>(null);
+  const topRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset to page 1 when surah changes.
+  useEffect(() => {
+    setAyahPage(1);
+  }, [number]);
+
+  // Scroll to top of ayah list when page changes.
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [ayahPage]);
 
   // Track last-read by observing visible ayah while user scrolls.
   useEffect(() => {
@@ -59,7 +76,6 @@ export default function SurahPage() {
     );
     items.forEach((it) => observer.observe(it));
 
-    // Persist on unmount or when leaving the page.
     const persist = () => {
       if (lastIndex > 0) {
         setLastRead({
@@ -96,9 +112,23 @@ export default function SurahPage() {
       />
     );
 
-  const prev = number > 1 ? number - 1 : null;
-  const next = number < 114 ? number + 1 : null;
+  const prevSurah = number > 1 ? number - 1 : null;
+  const nextSurah = number < 114 ? number + 1 : null;
   const showBasmalah = data.number !== 1 && data.number !== 9;
+
+  const pagination = data.pagination;
+  const totalAyahPages = pagination
+    ? Math.ceil(pagination.total / pagination.limit)
+    : 1;
+  const hasPrevAyahPage = ayahPage > 1;
+  const hasNextAyahPage = ayahPage < totalAyahPages;
+
+  // Ayah range label e.g. "1–10 / 286"
+  const rangeStart = pagination ? (pagination.page - 1) * pagination.limit + 1 : 1;
+  const rangeEnd = pagination
+    ? Math.min(pagination.page * pagination.limit, pagination.total)
+    : data.ayahs.length;
+  const rangeTotal = pagination?.total ?? data.ayahs.length;
 
   return (
     <div className="space-y-4">
@@ -148,7 +178,7 @@ export default function SurahPage() {
         </div>
       </section>
 
-      {showBasmalah ? (
+      {showBasmalah && ayahPage === 1 ? (
         <p
           dir="rtl"
           lang="ar"
@@ -157,6 +187,62 @@ export default function SurahPage() {
           بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ
         </p>
       ) : null}
+
+      {/* Scroll anchor — sits just above the ayah list */}
+      <div ref={topRef} className="-mt-2" />
+
+      {/* Toolbar: ayah range + pagination + toggle terjemahan */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Left: range info + page nav */}
+        <div className="flex items-center gap-1">
+          {totalAyahPages > 1 && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!hasPrevAyahPage}
+                onClick={() => setAyahPage((p) => p - 1)}
+                className="h-7 w-7 p-0"
+                aria-label="Halaman ayat sebelumnya"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Ayat {rangeStart}–{rangeEnd} / {rangeTotal}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!hasNextAyahPage}
+                onClick={() => setAyahPage((p) => p + 1)}
+                className="h-7 w-7 p-0"
+                aria-label="Halaman ayat selanjutnya"
+              >
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+              </Button>
+            </>
+          )}
+          {totalAyahPages <= 1 && (
+            <span className="text-xs text-muted-foreground">
+              {rangeTotal} ayat
+            </span>
+          )}
+        </div>
+
+        {/* Right: toggle terjemahan */}
+        <button
+          type="button"
+          onClick={() => setShowTranslation((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40"
+        >
+          {showTranslation ? (
+            <EyeOff className="h-3.5 w-3.5" aria-hidden />
+          ) : (
+            <Eye className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {showTranslation ? "Sembunyikan" : "Tampilkan"} terjemahan
+        </button>
+      </div>
 
       <ul ref={observedRef} className="flex flex-col gap-3">
         {data.ayahs.map((a) => {
@@ -224,36 +310,63 @@ export default function SurahPage() {
               <p
                 dir="rtl"
                 lang="ar"
-                className="mt-3 text-right font-quran text-3xl leading-[2.4]"
+                className="mt-3 text-right font-quran text-xl leading-[2.2]"
               >
                 {a.arab}
               </p>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                {a.translation}
-              </p>
+              {showTranslation && (
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  {a.translation}
+                </p>
+              )}
             </li>
           );
         })}
       </ul>
 
-      <nav className="flex items-center justify-between gap-3 pt-2">
-        {prev ? (
+      {/* Ayah pagination footer */}
+      {totalAyahPages > 1 && (
+        <div className="flex items-center justify-between pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!hasPrevAyahPage}
+            onClick={() => setAyahPage((p) => p - 1)}
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" aria-hidden />
+            Ayat Sebelumnya
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!hasNextAyahPage}
+            onClick={() => setAyahPage((p) => p + 1)}
+          >
+            Ayat Selanjutnya
+            <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+          </Button>
+        </div>
+      )}
+
+      {/* Surah navigation */}
+      <nav className="flex items-center justify-between gap-3 border-t pt-4">
+        {prevSurah ? (
           <Link
-            href={`/quran/${prev}`}
+            href={`/quran/${prevSurah}`}
             className="inline-flex items-center gap-1 rounded-lg border bg-card px-3 py-2 text-sm font-medium hover:bg-accent/40"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
-            Sebelumnya
+            Surah Sebelumnya
           </Link>
         ) : (
           <span />
         )}
-        {next ? (
+        {nextSurah ? (
           <Link
-            href={`/quran/${next}`}
+            href={`/quran/${nextSurah}`}
             className="ml-auto inline-flex items-center gap-1 rounded-lg border bg-card px-3 py-2 text-sm font-medium hover:bg-accent/40"
           >
-            Selanjutnya
+            Surah Selanjutnya
             <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
         ) : null}

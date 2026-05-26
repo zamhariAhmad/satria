@@ -19,6 +19,7 @@ const SLUGS = [
 ];
 
 async function fetchAllIdsForSlug(slug: string): Promise<{ slug: string; id: string }[]> {
+  const PAGE_LIMIT = 100; // API max limit
   try {
     // First fetch to get total count
     const first = await fetch(
@@ -30,15 +31,21 @@ async function fetchAllIdsForSlug(slug: string): Promise<{ slug: string; id: str
     const total = firstJson?.data?.total ?? 0;
     if (total === 0) return [];
 
-    // Fetch all in one request
-    const all = await fetch(
-      `${SANUSI_BASE}/doa/kategori/${slug}?page=1&limit=${total}`,
-      { headers: HEADERS },
+    // Paginate through all results (API max limit = 100)
+    const totalPages = Math.ceil(total / PAGE_LIMIT);
+    const pageRequests = Array.from({ length: totalPages }, (_, i) =>
+      fetch(
+        `${SANUSI_BASE}/doa/kategori/${slug}?page=${i + 1}&limit=${PAGE_LIMIT}`,
+        { headers: HEADERS },
+      ).then((r) => r.ok ? r.json() : null),
     );
-    if (!all.ok) return [];
-    const allJson = await all.json() as { data?: { doa?: { id: number }[] } };
-    const items = allJson?.data?.doa ?? [];
-    return items.map((item) => ({ slug, id: String(item.id) }));
+    const pages = await Promise.all(pageRequests);
+    const ids: { slug: string; id: string }[] = [];
+    for (const page of pages) {
+      const items = (page as { data?: { doa?: { id: number }[] } } | null)?.data?.doa ?? [];
+      for (const item of items) ids.push({ slug, id: String(item.id) });
+    }
+    return ids;
   } catch {
     return [];
   }

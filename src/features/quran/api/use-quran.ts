@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   surahListItemSchema,
-  surahDetailSchema,
+  surahDetailEnvelopeSchema,
   ayahDetailSchema,
   type SurahDetail,
   type SurahListItem,
@@ -16,6 +16,7 @@ const QURAN_BASE = "https://api.myquran.com/v3/quran";
 type MyQuranResponse = {
   status?: boolean | string;
   data?: unknown;
+  pagination?: unknown;
   message?: string;
 };
 
@@ -45,9 +46,26 @@ async function fetchQuran<T>(
   return parsed.data;
 }
 
+/** Fetch a surah page — merges top-level `pagination` into the returned data. */
+async function fetchSurah(number: number, page: number): Promise<SurahDetail> {
+  const res = await fetch(`${QURAN_BASE}/${number}?page=${page}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`Quran API error: ${res.status}`);
+  const json = (await res.json()) as MyQuranResponse;
+  if (!json?.status || json.data == null) {
+    throw new Error(json?.message ?? `Quran API: data tidak tersedia`);
+  }
+  const parsed = surahDetailEnvelopeSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new Error(`Invalid surah response shape: ${parsed.error.message}`);
+  }
+  return { ...parsed.data.data, pagination: parsed.data.pagination };
+}
+
 export const quranKeys = {
   surahs: ["quran", "surahs"] as const,
-  surah: (n: number) => ["quran", "surah", n] as const,
+  surah: (n: number, page: number) => ["quran", "surah", n, page] as const,
   ayah: (n: number, a: number) => ["quran", "ayah", n, a] as const,
 };
 
@@ -59,11 +77,11 @@ export function useSurahs() {
   });
 }
 
-export function useSurah(number: number | undefined) {
+export function useSurah(number: number | undefined, page = 1) {
   return useQuery({
-    queryKey: quranKeys.surah(number ?? 0),
+    queryKey: quranKeys.surah(number ?? 0, page),
     enabled: !!number,
-    queryFn: () => fetchQuran<SurahDetail>(`/${number}`, surahDetailSchema),
+    queryFn: () => fetchSurah(number!, page),
     staleTime: 1000 * 60 * 60 * 24,
   });
 }

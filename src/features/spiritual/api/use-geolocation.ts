@@ -18,7 +18,7 @@ export type GeoCoords = {
 };
 
 const STORAGE_KEY = "satria-geo-coords-v2";
-const STALE_AFTER_MS = 1000 * 60 * 30;
+const STALE_AFTER_MS = 1000 * 60 * 10; // 10 minutes – shorter so location updates faster after moving
 
 function loadCached(): GeoCoords | null {
   if (typeof window === "undefined") return null;
@@ -87,7 +87,7 @@ export function useGeolocation(autoRequest = true) {
           setError(err.message || "Gagal mengambil lokasi.");
         }
       },
-      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 5 * 60_000 },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     );
   }, []);
 
