@@ -88,6 +88,6 @@ export function useReverseGeocode(
     ],
     enabled: !!coords,
     queryFn: () => reverseGeocode(coords!.latitude, coords!.longitude),
-    staleTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 10, // 10 minutes
   });
 }

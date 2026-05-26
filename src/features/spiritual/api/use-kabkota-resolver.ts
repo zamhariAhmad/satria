@@ -70,15 +70,26 @@ function pickBestMatch(
  * the last successful pick in localStorage so subsequent loads are instant.
  */
 export function useKabkotaResolver(city: string | null | undefined) {
-  const [resolved, setResolved] = useState<StoredKabkota | null>(() =>
-    loadCached(),
-  );
+  const [resolved, setResolved] = useState<StoredKabkota | null>(() => {
+    // Only restore cache if it was matched for the same city name.
+    // We don't know the city yet at init time, so we load it lazily and
+    // validate against `city` inside the effect below.
+    return loadCached();
+  });
 
   const trimmed = (city ?? "").trim();
   const search = useSearchKabkota(trimmed);
 
   useEffect(() => {
     if (!trimmed) return;
+
+    // Invalidate stale cache: if the cached entry was for a different city,
+    // clear it immediately so the old location isn't shown while fetching.
+    if (resolved && resolved.matchedFor !== trimmed.toLowerCase()) {
+      setResolved(null);
+      return;
+    }
+
     if (!search.data) return;
     const best = pickBestMatch(search.data, trimmed, true);
     if (!best) return;

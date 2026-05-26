@@ -341,26 +341,29 @@ export default function SurahPage() {
 
         {/* Ayat pagination (tengah) */}
         {totalAyahPages > 1 ? (
-          <div className="flex flex-1 items-center justify-center gap-2">
+          <div className="flex flex-1 items-center justify-center gap-1">
             <Button
               variant="outline"
               size="sm"
               disabled={!hasPrevAyahPage}
               onClick={() => setAyahPage((p) => p - 1)}
-              className="flex-1"
+              className="h-9 w-9 p-0"
+              aria-label="Ayat Sebelumnya"
             >
-              <ChevronLeft className="mr-1 h-4 w-4" aria-hidden />
-              Ayat Sebelumnya
+              <ChevronLeft className="h-4 w-4" aria-hidden />
             </Button>
+            <span className="min-w-0 px-1 text-center text-xs text-muted-foreground">
+              Ayat {rangeStart}–{rangeEnd}
+            </span>
             <Button
               variant="outline"
               size="sm"
               disabled={!hasNextAyahPage}
               onClick={() => setAyahPage((p) => p + 1)}
-              className="flex-1"
+              className="h-9 w-9 p-0"
+              aria-label="Ayat Selanjutnya"
             >
-              Ayat Selanjutnya
-              <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+              <ChevronRight className="h-4 w-4" aria-hidden />
             </Button>
           </div>
         ) : (
