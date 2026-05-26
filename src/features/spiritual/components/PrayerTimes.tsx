@@ -134,8 +134,9 @@ export function PrayerTimes() {
     refetch,
   } = useJadwalToday(resolved?.id);
 
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
+    setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
@@ -149,7 +150,7 @@ export function PrayerTimes() {
   }, [jadwal]);
 
   const next = useMemo(() => {
-    if (!todayTimes) return null;
+    if (!todayTimes || !now) return null;
     const nowMin = now.getHours() * 60 + now.getMinutes();
     return findNextPrayer(todayTimes, nowMin);
   }, [todayTimes, now]);
@@ -187,7 +188,7 @@ export function PrayerTimes() {
     ? titleCase(jadwal.prov)
     : place?.principalSubdivision;
 
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowMin = now ? now.getHours() * 60 + now.getMinutes() : 0;
   const diff = next ? toMinutes(next.time) - nowMin : 0;
 
   const showRetryLocation =
