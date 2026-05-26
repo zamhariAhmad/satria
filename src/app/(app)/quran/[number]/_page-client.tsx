@@ -324,52 +324,61 @@ export default function SurahPage() {
         })}
       </ul>
 
-      {/* Ayah pagination footer */}
-      {totalAyahPages > 1 && (
-        <div className="flex items-center justify-between pt-1">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!hasPrevAyahPage}
-            onClick={() => setAyahPage((p) => p - 1)}
-          >
-            <ChevronLeft className="mr-1 h-4 w-4" aria-hidden />
-            Ayat Sebelumnya
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!hasNextAyahPage}
-            onClick={() => setAyahPage((p) => p + 1)}
-          >
-            Ayat Selanjutnya
-            <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
-          </Button>
-        </div>
-      )}
-
-      {/* Surah navigation */}
-      <nav className="flex items-center justify-between gap-3 border-t pt-4">
+      {/* Bottom navigation: surah prev | ayat pagination | surah next */}
+      <nav className="flex items-center justify-between gap-2 border-t pt-4">
+        {/* Surah sebelumnya */}
         {prevSurah ? (
           <Link
             href={`/quran/${prevSurah}`}
-            className="inline-flex items-center gap-1 rounded-lg border bg-card px-3 py-2 text-sm font-medium hover:bg-accent/40"
+            className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border bg-card font-medium hover:bg-accent/40"
+            aria-label="Surah Sebelumnya"
           >
-            <ChevronLeft className="h-4 w-4" aria-hidden />
-            Surah Sebelumnya
+            <ChevronLeft className="h-5 w-5" aria-hidden />
           </Link>
         ) : (
-          <span />
+          <span className="h-9 w-9 flex-shrink-0" />
         )}
+
+        {/* Ayat pagination (tengah) */}
+        {totalAyahPages > 1 ? (
+          <div className="flex flex-1 items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!hasPrevAyahPage}
+              onClick={() => setAyahPage((p) => p - 1)}
+              className="flex-1"
+            >
+              <ChevronLeft className="mr-1 h-4 w-4" aria-hidden />
+              Ayat Sebelumnya
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!hasNextAyahPage}
+              onClick={() => setAyahPage((p) => p + 1)}
+              className="flex-1"
+            >
+              Ayat Selanjutnya
+              <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+            </Button>
+          </div>
+        ) : (
+          <span className="flex-1" />
+        )}
+
+        {/* Surah selanjutnya */}
         {nextSurah ? (
           <Link
             href={`/quran/${nextSurah}`}
-            className="ml-auto inline-flex items-center gap-1 rounded-lg border bg-card px-3 py-2 text-sm font-medium hover:bg-accent/40"
+            className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border bg-card font-medium hover:bg-accent/40"
+            aria-label="Surah Selanjutnya"
           >
-            Surah Selanjutnya
-            <ChevronRight className="h-4 w-4" aria-hidden />
+            <ChevronRight className="h-5 w-5" aria-hidden />
           </Link>
-        ) : null}
+        ) : (
+          <span className="h-9 w-9 flex-shrink-0" />
+        )}
       </nav>
     </div>
   );
