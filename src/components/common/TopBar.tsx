@@ -38,7 +38,7 @@ export function TopBar() {
               {brand.name}
             </span>
             <span className="text-[10px] text-white/80">
-              Pesantren Payments
+              Smart Application for Muslims
             </span>
           </div>
         </Link>
