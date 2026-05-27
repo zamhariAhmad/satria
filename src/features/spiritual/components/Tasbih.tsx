@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RotateCcw, Hand } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  RotateCcw,
+  Hand,
+  Minus,
+  Volume2,
+  VolumeOff,
+  Vibrate,
+  SmartphoneNfc,
+} from "lucide-react";
 import { useIsMounted } from "@/lib/use-is-mounted";
 
 const STORAGE_KEY_COUNT = "satria-tasbih-count";
 const STORAGE_KEY_TARGET = "satria-tasbih-target";
-const DEFAULT_TARGET = 33;
+const DEFAULT_TARGET = 0;
 
 const RADIUS = 85;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -39,18 +46,18 @@ export function Tasbih() {
   const [count, setCount] = useState(0);
   const [target, setTarget] = useState(DEFAULT_TARGET);
   const [targetInput, setTargetInput] = useState(String(DEFAULT_TARGET));
-  const [done, setDone] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+  const [vibrateOn, setVibrateOn] = useState(true);
 
   // Load from localStorage after mount (avoid hydration mismatch)
   useEffect(() => {
     const savedCount = localStorage.getItem(STORAGE_KEY_COUNT);
     const savedTarget = localStorage.getItem(STORAGE_KEY_TARGET);
-    const t = savedTarget ? Math.max(1, Number(savedTarget)) : DEFAULT_TARGET;
+    const t = savedTarget !== null ? Math.max(0, Number(savedTarget)) : DEFAULT_TARGET;
     const c = savedCount ? Math.max(0, Number(savedCount)) : 0;
     setTarget(t);
     setTargetInput(String(t));
     setCount(c);
-    if (c >= t) setDone(true);
   }, []);
 
   // Persist on change
@@ -60,35 +67,39 @@ export function Tasbih() {
     localStorage.setItem(STORAGE_KEY_TARGET, String(target));
   }, [count, target, mounted]);
 
-  const progress = target > 0 ? (count / target) * CIRCUMFERENCE : 0;
+  const hasTarget = target > 0;
+  const done = hasTarget && count >= target;
+  const progress = hasTarget ? (count / target) * CIRCUMFERENCE : 0;
   const strokeDashoffset = CIRCUMFERENCE - Math.min(progress, CIRCUMFERENCE);
 
   const handleTap = () => {
     if (done) return;
     const next = count + 1;
     setCount(next);
-    playClickSound();
-    if (navigator.vibrate) navigator.vibrate(30);
-    if (next >= target) {
-      setDone(true);
-      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    if (soundOn) playClickSound();
+    if (vibrateOn && navigator.vibrate) navigator.vibrate(30);
+    if (hasTarget && next >= target) {
+      if (vibrateOn && navigator.vibrate) navigator.vibrate([100, 50, 100]);
     }
+  };
+
+  const handleDecrement = () => {
+    if (count <= 0) return;
+    setCount((c) => c - 1);
   };
 
   const handleReset = () => {
     setCount(0);
-    setDone(false);
   };
 
   const applyTarget = (val: string) => {
-    const n = Math.max(1, parseInt(val, 10) || DEFAULT_TARGET);
+    const n = Math.max(0, parseInt(val, 10) || 0);
     setTarget(n);
     setTargetInput(String(n));
     setCount(0);
-    setDone(false);
   };
 
-  const percentage = target > 0 ? Math.round((count / target) * 100) : 0;
+  const percentage = hasTarget ? Math.round((count / target) * 100) : null;
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -118,7 +129,7 @@ export function Tasbih() {
           <input
             id="tasbih-target"
             type="number"
-            min="1"
+            min="0"
             value={targetInput}
             onChange={(e) => setTargetInput(e.target.value)}
             onBlur={(e) => applyTarget(e.target.value)}
@@ -134,7 +145,7 @@ export function Tasbih() {
           {count}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          dari {target} · {percentage}%
+          {hasTarget ? `dari ${target} · ${percentage}%` : "Tanpa target"}
         </p>
       </div>
 
@@ -154,34 +165,37 @@ export function Tasbih() {
             className="stroke-muted"
             strokeWidth="10"
           />
-          {/* Progress */}
-          <circle
-            cx="128"
-            cy="128"
-            r={RADIUS}
-            fill="transparent"
-            className="stroke-primary transition-all duration-150 ease-out"
-            strokeWidth="10"
-            strokeDasharray={CIRCUMFERENCE}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-          />
+          {/* Progress – only shown when target is set */}
+          {hasTarget && (
+            <circle
+              cx="128"
+              cy="128"
+              r={RADIUS}
+              fill="transparent"
+              className="stroke-primary transition-all duration-150 ease-out"
+              strokeWidth="10"
+              strokeDasharray={CIRCUMFERENCE}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+            />
+          )}
         </svg>
 
         <button
           type="button"
-          onClick={handleTap}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            handleTap();
+          }}
           disabled={done}
           aria-label={done ? "Target tercapai" : "Tap untuk zikir"}
-          className="absolute flex h-44 w-44 items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+          className="absolute flex h-44 w-44 touch-manipulation items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <span className="flex flex-col items-center gap-1">
-            {done ? (
-              <span className="text-lg font-extrabold tracking-wide">Selesai</span>
-            ) : (
-              <Hand className="h-10 w-10" aria-hidden />
-            )}
-          </span>
+          {done ? (
+            <span className="text-lg font-extrabold tracking-wide">Selesai</span>
+          ) : (
+            <Hand className="h-10 w-10" aria-hidden />
+          )}
         </button>
       </div>
 
@@ -194,15 +208,70 @@ export function Tasbih() {
         </div>
       )}
 
-      {/* Reset button */}
-      <Button
-        variant="outline"
-        className="w-full gap-2 border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
-        onClick={handleReset}
-      >
-        <RotateCcw className="h-4 w-4" aria-hidden />
-        Reset Hitungan
-      </Button>
+      {/* Control buttons — 1 row, 4 columns */}
+      <div className="grid w-full grid-cols-4 gap-2">
+        {/* Suara */}
+        <button
+          type="button"
+          onClick={() => setSoundOn((v) => !v)}
+          aria-label={`Suara ${soundOn ? "On" : "Off"}`}
+          className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-xs font-medium transition-colors ${
+            soundOn
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-border bg-muted text-muted-foreground"
+          }`}
+        >
+          {soundOn ? (
+            <Volume2 className="h-5 w-5" aria-hidden />
+          ) : (
+            <VolumeOff className="h-5 w-5" aria-hidden />
+          )}
+          {soundOn ? "On" : "Off"}
+        </button>
+
+        {/* Getar */}
+        <button
+          type="button"
+          onClick={() => setVibrateOn((v) => !v)}
+          aria-label={`Getar ${vibrateOn ? "On" : "Off"}`}
+          className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-xs font-medium transition-colors ${
+            vibrateOn
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-border bg-muted text-muted-foreground"
+          }`}
+        >
+          {vibrateOn ? (
+            <Vibrate className="h-5 w-5" aria-hidden />
+          ) : (
+            <SmartphoneNfc className="h-5 w-5" aria-hidden />
+          )}
+          {vibrateOn ? "On" : "Off"}
+        </button>
+
+        {/* Kurangi hitungan */}
+        <button
+          type="button"
+          onClick={handleDecrement}
+          disabled={count <= 0}
+          aria-label="Kurangi hitungan"
+          className="flex flex-col items-center justify-center gap-1 rounded-xl border border-border bg-muted px-2 py-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Minus className="h-5 w-5" aria-hidden />
+          Kurangi
+        </button>
+
+        {/* Reset */}
+        <button
+          type="button"
+          onClick={handleReset}
+          disabled={count <= 0}
+          aria-label="Reset hitungan"
+          className="flex flex-col items-center justify-center gap-1 rounded-xl border border-destructive/30 bg-destructive/5 px-2 py-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <RotateCcw className="h-5 w-5" aria-hidden />
+          Reset
+        </button>
+      </div>
     </div>
   );
 }

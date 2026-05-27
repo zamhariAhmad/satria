@@ -123,6 +123,8 @@ export function PrayerTimes() {
   const { data: place } = useReverseGeocode(
     coords ? { latitude: coords.latitude, longitude: coords.longitude } : null,
   );
+  console.debug("Reverse geocode result", { place });
+  console.debug("Detected city", { city: place });
 
   const detectedCity = place?.city;
   const { resolved, isResolving } = useKabkotaResolver(detectedCity);

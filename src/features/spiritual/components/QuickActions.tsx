@@ -9,6 +9,7 @@ import {
   HandHeart,
   BookOpenText,
   Orbit,
+  Calendar,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -28,6 +29,8 @@ const ACTIONS: QuickAction[] = [
   { label: "Tahlil & Yasin", icon: ScrollText, tone: "rose" },
   { label: "Wirid & Doa", icon: HandHeart, tone: "violet", href: "/wirid" },
   { label: "Tasbih", icon: Orbit, tone: "emerald", href: "/tasbih" },
+  { label: "Kalkulator Zakat", icon: HandHeart, tone: "amber" },
+  { label: "Kalender Islam", icon: Calendar, tone: "sky" },
 ];
 
 const TONE_BG: Record<QuickAction["tone"], string> = {
