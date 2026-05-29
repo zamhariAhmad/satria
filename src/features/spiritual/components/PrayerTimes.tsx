@@ -16,9 +16,10 @@ import { LoadingScreen } from "@/components/common/LoadingScreen";
 import { ErrorScreen } from "@/components/common/ErrorScreen";
 import { useGeolocation } from "@/features/spiritual/api/use-geolocation";
 import { useReverseGeocode } from "@/features/spiritual/api/use-reverse-geocode";
-import { useKabkotaResolver } from "@/features/spiritual/api/use-kabkota-resolver";
-import { useJadwalToday } from "@/features/spiritual/api/use-sholat";
-import type { SholatTimes } from "@/features/spiritual/schemas/sholat";
+import {
+  useTodayPrayerTimings,
+  type PrayerTimings,
+} from "@/features/spiritual/api/use-aladhan";
 
 type PrayerName =
   | "imsak"
@@ -62,12 +63,7 @@ const MAIN_PRAYERS: PrayerName[] = [
   "isya",
 ];
 
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function buildTimes(times: SholatTimes): PrayerTime[] {
+function buildTimes(times: PrayerTimings): PrayerTime[] {
   const order: PrayerName[] = [
     "imsak",
     "subuh",
@@ -104,14 +100,6 @@ function formatCountdown(diffMin: number) {
   return `${h} jam ${m} menit lagi`;
 }
 
-function titleCase(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .replace(/Kab\./i, "Kab.")
-    .replace(/Kota /i, "Kota ");
-}
-
 export function PrayerTimes() {
   const {
     coords,
@@ -124,15 +112,12 @@ export function PrayerTimes() {
     coords ? { latitude: coords.latitude, longitude: coords.longitude } : null,
   );
 
-  const detectedCity = place?.city;
-  const { resolved, isResolving } = useKabkotaResolver(detectedCity);
-
   const {
-    data: jadwal,
+    data: timings,
     isLoading: scheduleLoading,
     isError: scheduleError,
     refetch,
-  } = useJadwalToday(resolved?.id);
+  } = useTodayPrayerTimings(coords);
 
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -142,12 +127,9 @@ export function PrayerTimes() {
   }, []);
 
   const todayTimes = useMemo<PrayerTime[] | null>(() => {
-    if (!jadwal) return null;
-    const key = todayKey();
-    const entry =
-      jadwal.jadwal[key] ?? Object.values(jadwal.jadwal)[0] ?? null;
-    return entry ? buildTimes(entry) : null;
-  }, [jadwal]);
+    if (!timings) return null;
+    return buildTimes(timings);
+  }, [timings]);
 
   const next = useMemo(() => {
     if (!todayTimes || !now) return null;
@@ -156,7 +138,7 @@ export function PrayerTimes() {
   }, [todayTimes, now]);
 
   const initialLoading =
-    (!todayTimes && (geoStatus === "prompting" || isResolving || scheduleLoading));
+    !todayTimes && (geoStatus === "prompting" || scheduleLoading);
 
   if (initialLoading) return <LoadingScreen />;
 
@@ -165,7 +147,7 @@ export function PrayerTimes() {
       <ErrorScreen
         onRetry={() => {
           if (geoStatus !== "granted") request();
-          if (resolved?.id) refetch();
+          if (coords) refetch();
         }}
         description={
           geoStatus === "denied" || geoStatus === "unsupported"
@@ -178,15 +160,8 @@ export function PrayerTimes() {
     );
   }
 
-  const cityLabel = jadwal?.kabko
-    ? titleCase(jadwal.kabko)
-    : detectedCity
-      ? detectedCity
-      : "Mendeteksi lokasi…";
-
-  const provLabel = jadwal?.prov
-    ? titleCase(jadwal.prov)
-    : place?.principalSubdivision;
+  const cityLabel = place?.city ?? "Mendeteksi lokasi…";
+  const provLabel = place?.principalSubdivision;
 
   const nowMin = now ? now.getHours() * 60 + now.getMinutes() : 0;
   const diff = next ? toMinutes(next.time) - nowMin : 0;
