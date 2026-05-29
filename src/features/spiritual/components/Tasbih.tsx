@@ -19,13 +19,33 @@ const DEFAULT_TARGET = 0;
 const RADIUS = 85;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function playClickSound() {
+// Singleton AudioContext. Browsers cap the number of AudioContexts per tab
+// (Chrome ~6), so creating one per tap silently breaks audio after a few taps.
+let sharedAudioContext: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  if (sharedAudioContext) return sharedAudioContext;
   try {
-    const AudioCtx =
+    const Ctor =
       window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
         .webkitAudioContext;
-    const ctx = new AudioCtx();
+    if (!Ctor) return null;
+    sharedAudioContext = new Ctor();
+    return sharedAudioContext;
+  } catch {
+    return null;
+  }
+}
+
+function playClickSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  try {
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+    }
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
@@ -38,6 +58,17 @@ function playClickSound() {
     osc.stop(ctx.currentTime + 0.06);
   } catch {
     /* ignore – AudioContext may be blocked */
+  }
+}
+
+function triggerVibrate(pattern: number | number[]) {
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") {
+    return;
+  }
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    /* ignore */
   }
 }
 
@@ -74,12 +105,15 @@ export function Tasbih() {
 
   const handleTap = () => {
     if (done) return;
-    const next = count + 1;
-    setCount(next);
+    let reachedTarget = false;
+    setCount((c) => {
+      const next = c + 1;
+      if (hasTarget && next >= target) reachedTarget = true;
+      return next;
+    });
     if (soundOn) playClickSound();
-    if (vibrateOn && navigator.vibrate) navigator.vibrate(30);
-    if (hasTarget && next >= target) {
-      if (vibrateOn && navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    if (vibrateOn) {
+      triggerVibrate(reachedTarget ? [100, 50, 100] : 30);
     }
   };
 

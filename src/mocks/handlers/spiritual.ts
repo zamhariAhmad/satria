@@ -8,13 +8,36 @@ function todayIso() {
   return d.toISOString().split("T")[0];
 }
 
+const HIJRI_MONTHS_ID = [
+  "Muharram",
+  "Safar",
+  "Rabiul Awal",
+  "Rabiul Akhir",
+  "Jumadil Awal",
+  "Jumadil Akhir",
+  "Rajab",
+  "Sya'ban",
+  "Ramadhan",
+  "Syawal",
+  "Dzulqa'dah",
+  "Dzulhijjah",
+];
+
 function hijriToday() {
   try {
-    return new Intl.DateTimeFormat("id-ID-u-ca-islamic-umalqura", {
+    const parts = new Intl.DateTimeFormat("en-US-u-ca-islamic-umalqura", {
       day: "numeric",
-      month: "long",
+      month: "numeric",
       year: "numeric",
-    }).format(new Date());
+    }).formatToParts(new Date());
+    const get = (type: string) =>
+      parts.find((p) => p.type === type)?.value ?? "";
+    const day = get("day");
+    const monthIdx = Number(get("month"));
+    const year = get("year").replace(/\D/g, "");
+    const month = HIJRI_MONTHS_ID[monthIdx - 1] ?? "";
+    if (!day || !month || !year) return "—";
+    return `${day} ${month} ${year} H`;
   } catch {
     return "—";
   }

@@ -3,14 +3,53 @@
 import { useEffect, useState } from "react";
 import { Calendar } from "lucide-react";
 
+const HIJRI_MONTHS_ID = [
+  "Muharram",
+  "Safar",
+  "Rabiul Awal",
+  "Rabiul Akhir",
+  "Jumadil Awal",
+  "Jumadil Akhir",
+  "Rajab",
+  "Sya'ban",
+  "Ramadhan",
+  "Syawal",
+  "Dzulqa'dah",
+  "Dzulhijjah",
+];
+
+const WEEKDAYS_ID: Record<string, string> = {
+  Sunday: "Minggu",
+  Monday: "Senin",
+  Tuesday: "Selasa",
+  Wednesday: "Rabu",
+  Thursday: "Kamis",
+  Friday: "Jumat",
+  Saturday: "Sabtu",
+};
+
 function formatHijri(date: Date) {
   try {
-    return new Intl.DateTimeFormat("id-ID-u-ca-islamic-umalqura", {
+    const parts = new Intl.DateTimeFormat("en-US-u-ca-islamic-umalqura", {
       weekday: "long",
       day: "numeric",
-      month: "long",
+      month: "numeric",
       year: "numeric",
-    }).format(date);
+    }).formatToParts(date);
+
+    const get = (type: string) =>
+      parts.find((p) => p.type === type)?.value ?? "";
+
+    const weekdayEn = get("weekday");
+    const day = get("day");
+    const monthIdx = Number(get("month"));
+    const year = get("year").replace(/\D/g, "");
+
+    const weekday = WEEKDAYS_ID[weekdayEn] ?? weekdayEn;
+    const month = HIJRI_MONTHS_ID[monthIdx - 1] ?? "";
+
+    if (!day || !month || !year) return "—";
+    return `${weekday}, ${day} ${month} ${year} H`;
   } catch {
     return "—";
   }
