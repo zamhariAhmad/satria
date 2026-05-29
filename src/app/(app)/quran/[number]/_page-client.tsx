@@ -24,12 +24,25 @@ import { toast } from "sonner";
 import { cn } from "@/lib/cn";
 import { useIsMounted } from "@/lib/use-is-mounted";
 
+function readAyahHash(): number | null {
+  if (typeof window === "undefined") return null;
+  const m = window.location.hash.match(/^#ayah-(\d+)$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export default function SurahPage() {
   const mounted = useIsMounted();
   const { number: numStr } = useParams<{ number: string }>();
   const number = Number(numStr);
   const [ayahPage, setAyahPage] = useState(1);
   const [showTranslation, setShowTranslation] = useState(true);
+  // Ayah target dari hash URL (deep link, contoh dari LastReadCard).
+  // Disimpan agar setelah data datang kita bisa loncat ke halaman ayat
+  // yang benar — sebelum ini, hash diabaikan jika ayatnya berada di
+  // halaman pagination berbeda dari halaman 1.
+  const [targetAyah, setTargetAyah] = useState<number | null>(null);
 
   const { data, isLoading, isError, refetch } = useSurah(number, ayahPage);
 
@@ -39,16 +52,37 @@ export default function SurahPage() {
 
   const observedRef = useRef<HTMLUListElement | null>(null);
   const topRef = useRef<HTMLDivElement | null>(null);
+  const hashScrolledRef = useRef(false);
 
-  // Reset to page 1 when surah changes.
+  // Read deep-link ayah from the URL hash on mount and when surah changes.
   useEffect(() => {
-    setAyahPage(1);
+    setTargetAyah(readAyahHash());
+    hashScrolledRef.current = false;
   }, [number]);
 
-  // Scroll to top of ayah list when page changes.
+  // Reset to page 1 when surah changes — but only if there is no deep link.
   useEffect(() => {
+    if (readAyahHash() === null) setAyahPage(1);
+  }, [number]);
+
+  // When data arrives, if a target ayah is set and it falls outside the
+  // current pagination window, jump to the page that contains it.
+  useEffect(() => {
+    if (!data || !targetAyah) return;
+    const limit = data.pagination?.limit ?? data.ayahs.length;
+    if (limit <= 0) return;
+    const targetPage = Math.max(1, Math.ceil(targetAyah / limit));
+    if (targetPage !== ayahPage) {
+      setAyahPage(targetPage);
+    }
+  }, [data, targetAyah, ayahPage]);
+
+  // Scroll to top of ayah list when page changes — but skip when we have a
+  // deep-link target so the next effect can scroll to the ayah instead.
+  useEffect(() => {
+    if (targetAyah) return;
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [ayahPage]);
+  }, [ayahPage, targetAyah]);
 
   // Track last-read by observing visible ayah while user scrolls.
   useEffect(() => {
@@ -94,14 +128,22 @@ export default function SurahPage() {
     };
   }, [data, setLastRead]);
 
-  // Handle deep link to a specific ayah (#ayah-12).
+  // Handle deep link to a specific ayah (#ayah-12). Run after data is rendered
+  // and only once per visit; if the ayah lives on a different pagination page,
+  // the effect above will switch pages first and this will fire again.
   useEffect(() => {
-    if (!data) return;
-    const hash = window.location.hash;
-    if (!hash) return;
-    const target = document.querySelector(hash);
-    target?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [data]);
+    if (!data || !targetAyah || hashScrolledRef.current) return;
+    const limit = data.pagination?.limit ?? data.ayahs.length;
+    const targetPage = limit > 0 ? Math.max(1, Math.ceil(targetAyah / limit)) : 1;
+    if (targetPage !== ayahPage) return;
+    const target = document.getElementById(`ayah-${targetAyah}`);
+    if (!target) return;
+    hashScrolledRef.current = true;
+    // Use requestAnimationFrame to ensure layout is committed before scrolling.
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [data, targetAyah, ayahPage]);
 
   if (!mounted || isLoading) return <LoadingScreen />;
   if (isError || !data)
