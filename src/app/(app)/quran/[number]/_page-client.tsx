@@ -142,8 +142,23 @@ export default function SurahPage() {
     // Use requestAnimationFrame to ensure layout is committed before scrolling.
     requestAnimationFrame(() => {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Clear the deep-link target so subsequent user-driven pagination
+      // (next/prev) is not hijacked back to this ayah.
+      setTargetAyah(null);
+      // Also strip the hash from the URL so reload/back doesn't reapply it
+      // unexpectedly while the user is browsing other pages.
+      if (typeof window !== "undefined" && window.location.hash) {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
     });
   }, [data, targetAyah, ayahPage]);
+
+  // Manual pagination handler — also clears any pending deep-link target so
+  // the "force page" effect cannot pull the user back.
+  const goToAyahPage = (updater: (p: number) => number) => {
+    if (targetAyah !== null) setTargetAyah(null);
+    setAyahPage(updater);
+  };
 
   if (!mounted || isLoading) return <LoadingScreen />;
   if (isError || !data)
@@ -243,7 +258,7 @@ export default function SurahPage() {
                 variant="outline"
                 size="sm"
                 disabled={!hasPrevAyahPage}
-                onClick={() => setAyahPage((p) => p - 1)}
+                onClick={() => goToAyahPage((p) => p - 1)}
                 className="h-7 w-7 p-0"
                 aria-label="Halaman ayat sebelumnya"
               >
@@ -256,7 +271,7 @@ export default function SurahPage() {
                 variant="outline"
                 size="sm"
                 disabled={!hasNextAyahPage}
-                onClick={() => setAyahPage((p) => p + 1)}
+                onClick={() => goToAyahPage((p) => p + 1)}
                 className="h-7 w-7 p-0"
                 aria-label="Halaman ayat selanjutnya"
               >
@@ -388,7 +403,7 @@ export default function SurahPage() {
               variant="outline"
               size="sm"
               disabled={!hasPrevAyahPage}
-              onClick={() => setAyahPage((p) => p - 1)}
+              onClick={() => goToAyahPage((p) => p - 1)}
               className="h-9 w-9 p-0"
               aria-label="Ayat Sebelumnya"
             >
@@ -401,7 +416,7 @@ export default function SurahPage() {
               variant="outline"
               size="sm"
               disabled={!hasNextAyahPage}
-              onClick={() => setAyahPage((p) => p + 1)}
+              onClick={() => goToAyahPage((p) => p + 1)}
               className="h-9 w-9 p-0"
               aria-label="Ayat Selanjutnya"
             >
