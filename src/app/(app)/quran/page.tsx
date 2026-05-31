@@ -89,13 +89,6 @@ export default function QuranPage() {
                     {s.translation} · {s.revelation} · {s.number_of_ayahs} ayat
                   </p>
                 </div>
-                <span
-                  className="shrink-0 font-quran text-xl leading-none text-primary"
-                  dir="rtl"
-                  lang="ar"
-                >
-                  {s.name}
-                </span>
                 <ChevronRight
                   className="h-4 w-4 shrink-0 text-muted-foreground"
                   aria-hidden
