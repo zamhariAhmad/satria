@@ -67,7 +67,7 @@ export default function HaditsPage() {
             </p>
           ) : (
             <Link
-              href={`/hadits/${daily.data.kitab}/${daily.data.nomor}`}
+              href={`/hadits/${daily.data.kitab}?n=${daily.data.nomor}`}
               className="block rounded-xl bg-white/10 p-3 transition-colors hover:bg-white/15"
             >
               <div className="flex items-center justify-between">

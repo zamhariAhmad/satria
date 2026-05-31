@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -17,7 +17,10 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
+  useHaditsDetail,
   useKitabHadits,
   useSearchHadits,
 } from "@/features/hadits/api/use-hadits";
@@ -28,8 +31,141 @@ import { useIsMounted } from "@/lib/use-is-mounted";
 const PAGE_SIZE = 10;
 
 export default function HaditsKitabPage() {
-  const mounted = useIsMounted();
+  // useSearchParams butuh Suspense boundary saat prerender (Next 15).
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <HaditsKitabRouter />
+    </Suspense>
+  );
+}
+
+function HaditsKitabRouter() {
   const { slug } = useParams<{ slug: string }>();
+  const searchParams = useSearchParams();
+  const nParam = searchParams.get("n");
+  const nomor = nParam ? Number(nParam) : null;
+  const hasDetail = !!(nomor && Number.isFinite(nomor) && nomor > 0);
+
+  if (hasDetail) {
+    return <HaditsDetailView slug={slug} nomor={nomor as number} />;
+  }
+  return <HaditsListView slug={slug} />;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Detail view (?n=...)                                                       */
+/* -------------------------------------------------------------------------- */
+
+function HaditsDetailView({ slug, nomor }: { slug: string; nomor: number }) {
+  const mounted = useIsMounted();
+  const { data, isLoading, isError, refetch } = useHaditsDetail(slug, nomor);
+  // Pull just one row to learn the kitab name + total.
+  const meta = useKitabHadits({ slug, page: 1, limit: 1 });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [slug, nomor]);
+
+  if (!mounted || isLoading) return <LoadingScreen />;
+  if (isError || !data)
+    return (
+      <ErrorScreen
+        onRetry={() => refetch()}
+        description="Hadits tidak tersedia."
+      />
+    );
+
+  const kitabName = meta.data?.nama ?? prettifyKitabSlug(slug);
+  const total = meta.data?.total;
+  const prev = nomor > 1 ? nomor - 1 : null;
+  const next = total && nomor >= total ? null : nomor + 1;
+
+  return (
+    <div className="space-y-4">
+      <Link
+        href={`/hadits/${slug}`}
+        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden />
+        {kitabName}
+      </Link>
+
+      <Card className="overflow-hidden border-0 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <Badge
+              variant="muted"
+              className="bg-white/20 text-white hover:bg-white/25"
+            >
+              {kitabName} · No. {data.nomor}
+            </Badge>
+          </div>
+
+          <p
+            dir="rtl"
+            lang="ar"
+            className="mt-5 whitespace-pre-line text-right font-quran text-xl leading-[2.1]"
+          >
+            {cleanHaditsText(data.arab)}
+          </p>
+        </CardContent>
+        <Separator className="bg-white/20" />
+        <CardContent className="p-5">
+          <p className="text-[10px] uppercase tracking-wide text-primary-foreground/80">
+            Terjemahan
+          </p>
+          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-primary-foreground/95">
+            {cleanHaditsText(data.terjemah) || "(Terjemahan belum tersedia.)"}
+          </p>
+        </CardContent>
+      </Card>
+
+      <nav
+        aria-label="Navigasi hadits"
+        className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3"
+      >
+        {prev ? (
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/hadits/${slug}?n=${prev}`}>
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              No. {prev}
+            </Link>
+          </Button>
+        ) : (
+          <span />
+        )}
+        <p className="text-xs text-muted-foreground">
+          {total ? (
+            <>
+              <strong className="text-foreground">{nomor}</strong> /{" "}
+              {total.toLocaleString("id-ID")}
+            </>
+          ) : (
+            <>Hadits #{nomor}</>
+          )}
+        </p>
+        {next ? (
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/hadits/${slug}?n=${next}`}>
+              No. {next}
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
+        ) : (
+          <span />
+        )}
+      </nav>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* List view (default)                                                        */
+/* -------------------------------------------------------------------------- */
+
+function HaditsListView({ slug }: { slug: string }) {
+  const mounted = useIsMounted();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -214,7 +350,7 @@ function Section({
         {items.map((h) => (
           <li key={`${h.kitab}-${h.nomor}`}>
             <Link
-              href={`/hadits/${slug}/${h.nomor}`}
+              href={`/hadits/${slug}?n=${h.nomor}`}
               className="block rounded-xl border bg-card p-4 transition-colors hover:bg-accent/40 active:bg-accent/60"
             >
               <div className="flex items-center justify-between">
